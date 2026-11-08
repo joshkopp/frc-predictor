@@ -6,11 +6,15 @@ Two pages behind one custom nav bar:
 
 Run locally:  streamlit run streamlit_app.py
 """
+import importlib
 import pathlib
 
 import streamlit as st
 
 import ui
+
+# Streamlit Cloud can keep an old copy of ui.py in memory after a git pull; always load the current one.
+ui = importlib.reload(ui)
 
 ROOT = pathlib.Path(__file__).parent
 
