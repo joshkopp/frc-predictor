@@ -36,10 +36,13 @@ def count(n, suffix=""):
 
 
 # ------------------------------------------------------------------ page chrome
-def nav(data_through):
-    return (f'<div class="jk"><div class="jk-nav jk-glass jk-in"><a class="jk-brand" href="https://joshkoppanalil.com" target="_blank">JK<span>.</span></a>'
-            f'<span class="sp"></span><span class="jk-pill"><i class="jk-dot"></i>2026 data through {esc(data_through)}</span>'
-            f'<a class="jk-pill" href="https://joshkoppanalil.com" target="_blank">joshkoppanalil.com ↗</a></div></div>')
+def brand():
+    return ('<div class="jk"><a class="jk-brand" href="https://joshkoppanalil.com" target="_blank"><b>JK<span>.</span></b>'
+            '<em>FRC Toolkit</em></a></div>')
+
+
+def ext_link():
+    return '<div class="jk jk-extw"><a class="jk-pill" href="https://joshkoppanalil.com" target="_blank">joshkoppanalil.com ↗</a></div>'
 
 
 def hero(stats, meta):
@@ -52,18 +55,27 @@ def hero(stats, meta):
     bars = (hbars([{"label": "Coin flip", "v": 0.5, "text": "50.0%"},
                    {"label": "Simple baseline", "v": base, "text": pct(base)},
                    {"label": "This model", "v": acc, "text": pct(acc), "hot": True}], scale=1.0))
-    words = "Who wins the match?".split()
-    h1 = "".join(f'<span class="w" style="--d:{.15 + i * .09:.2f}">{esc(w)}</span> ' for i, w in enumerate(words))
+    h1 = title_words("Who wins the match?")
     return (
         '<div class="jk"><section class="jk-hero"><div>'
-        '<div class="jk-eyebrow jk-in" style="--d:.05">FRC 2026 · REBUILT</div>'
-        f'<h1>{h1}<span class="hd"></span></h1>'
+        f'<div class="jk-in" style="--d:.05"><span class="jk-live"><i class="jk-dot"></i>FRC 2026 · REBUILT · data through {esc(meta["data_through"])}</span></div>'
+        f'<h1>{h1}</h1>'
         '<p class="intro jk-in" style="--d:.55">Pick six teams. See who wins.</p>'
         f'<p class="jk-meta jk-in" style="--d:.7"><span><b>{meta["official_matches"]:,}</b> official matches</span>'
         f'<i></i><span><b>{meta["n_teams"]:,}</b> teams</span><i></i><span>tested on <b>{n_test:,}</b> unseen</span></p></div>'
         '<div class="jk-ringcard jk-glass jk-in" style="--d:.3"><div class="jk-ringwrap"><div class="jk-halo"></div>' + ring +
         f'<div class="jk-ringtxt"><div class="jk-big">{count(int(whole))}<small>.{dec}%</small></div><div class="jk-ringlbl">winner accuracy</div></div></div>'
         + bars + '</div></section></div>')
+
+
+def title_words(text):
+    """Headline whose words blur-rise in one by one; the accent dot sits on the last word."""
+    ws = text.split()
+    out = []
+    for i, w in enumerate(ws):
+        dot = '<span class="hd"></span>' if i == len(ws) - 1 else ""
+        out.append(f'<span class="w" style="--d:{.15 + i * .09:.2f}">{esc(w)}{dot}</span>')
+    return " ".join(out)
 
 
 def kpis(stats, meta):
@@ -203,3 +215,68 @@ def result(p_red, gap, sd, rows, drivers, conf_note, unknown):
 def footer():
     return ('<div class="jk"><div class="jk-foot"><span>Built by Josh Koppanalil · <a href="https://joshkoppanalil.com" target="_blank">joshkoppanalil.com</a></span>'
             '<span>Data: The Blue Alliance. Not affiliated with FIRST or TBA.</span></div></div>')
+
+
+# ------------------------------------------------------------------ alliance recommender
+def a_hero(event_name, n_teams, n_played, captain_label):
+    meta = (f'<span><b>{esc(event_name)}</b></span><i></i><span><b>{n_teams}</b> teams</span><i></i>'
+            f'<span><b>{n_played}</b> matches played</span>') if event_name else ""
+    return (
+        '<div class="jk"><section class="jk-hero jk-hero-a"><div>'
+        '<div class="jk-in" style="--d:.05"><span class="jk-live"><i class="jk-dot"></i>FRC · Alliance selection</span></div>'
+        f'<h1>{title_words("Who should you pick?")}</h1>'
+        '<p class="intro jk-in" style="--d:.55">Ranks every team at an event as your partner, by raw points and by how well they cover your weak spots.</p>'
+        f'<p class="jk-meta jk-in" style="--d:.7">{meta}</p></div></section></div>')
+
+
+def a_kpis(cards):
+    """cards: list of (value_html, label, sub)."""
+    return '<div class="jk"><div class="jk-grid4">' + "".join(
+        f'<div class="jk-kpi jk-glass jk-hover" style="--i:{i}"><div class="jk-kv">{v}</div><div class="jk-kl">{esc(l)}</div><div class="jk-ks">{esc(s)}</div></div>'
+        for i, (v, l, s) in enumerate(cards)) + '</div></div>'
+
+
+def a_picks(picks):
+    """picks: dicts with pick, team, name, score, synergy, points, proj, fit."""
+    medal = {1: "gold", 2: "silver", 3: "bronze"}
+    cards = []
+    for i, p in enumerate(picks):
+        fit = f'<div class="jk-fit"><span>Covers your weak spot</span><b>{esc(p["fit"])}</b></div>' if p["fit"] else ""
+        cards.append(
+            f'<div class="jk-card jk-glass jk-hover jk-pick {medal.get(p["pick"], "")}" style="--i:{i}">'
+            f'<div class="jk-pickh"><span class="jk-medal">#{p["pick"]}</span><span class="jk-pickscore"><b>{p["score"]:.0f}</b>pick score</span></div>'
+            f'<div class="jk-team">{p["team"]}</div><div class="jk-tname">{esc(p["name"]) or "&nbsp;"}</div>'
+            + hbars([{"label": "Points", "v": p["points"], "text": f'{p["points"]:.0f}', "hot": True},
+                     {"label": "Synergy", "v": p["synergy"], "text": f'{p["synergy"]:.0f}'}], scale=100)
+            + f'<div class="jk-stat"><span>Projected alliance</span><b>{p["proj"]:.0f} pts</b></div>{fit}</div>')
+    return '<div class="jk"><div class="jk-grid3">' + "".join(cards) + '</div></div>'
+
+
+def a_compare(rows, you, cand):
+    """rows: (category, you_value, cand_value). Paired bars on one shared scale."""
+    mx = max([max(a, b, 0) for _, a, b in rows] + [1e-9])
+    out = [f'<div class="jk"><div class="jk-leg"><span class="you">{esc(you)}</span><span class="cand">{esc(cand)}</span></div>']
+    for i, (c, a, b) in enumerate(rows):
+        out.append(f'<div class="jk-cmp"><span class="t">{esc(c)}</span><div class="bb">'
+                   f'<div class="k you"><i style="--w:{max(a, 0) / mx * 100:.1f}%;--i:{i}"></i><b>{a:.1f}</b></div>'
+                   f'<div class="k cand"><i style="--w:{max(b, 0) / mx * 100:.1f}%;--i:{i}"></i><b>{b:.1f}</b></div></div></div>')
+    out.append("</div>")
+    return "".join(out)
+
+
+def a_how():
+    items = [
+        ("Points score", "Projected alliance score = your OPR + their OPR + a typical third robot (median OPR of teams still available), scaled 0-100."),
+        ("Synergy", "For each scoring category, every team's contribution comes from component OPR on TBA score breakdowns. "
+                    "Partners earn synergy for being strong where <b>you</b> are weak, weighted by how many points that category is worth here."),
+        ("Pick score", "A blend of the two, set with the Points vs synergy slider."),
+        ("Best fit", "The category where they help you most."),
+    ]
+    return '<div class="jk"><div class="jk-grid2">' + "".join(
+        f'<div class="jk-card jk-glass jk-hover"><h3>{esc(t)}</h3><p class="jk-muted" style="font-size:14px;line-height:1.6;margin-top:6px">{d}</p></div>'
+        for t, d in items) + '</div></div>'
+
+
+def a_empty(title, text):
+    return (f'<div class="jk"><div class="jk-card jk-glass jk-empty jk-in"><div class="jk-eyebrow">{esc(title)}</div>'
+            f'<p class="jk-muted" style="margin-top:8px;font-size:15px">{text}</p></div></div>')
