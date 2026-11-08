@@ -50,19 +50,19 @@ def hero(stats, meta):
     ring = f'<div class="jk-ring" style="--to:{acc * 100:.1f}"></div>'
     whole, dec = f"{acc * 100:.1f}".split(".")
     bars = (hbars([{"label": "Coin flip", "v": 0.5, "text": "50.0%"},
-                   {"label": "Rating-gap baseline", "v": base, "text": pct(base)},
-                   {"label": "XGBoost (this app)", "v": acc, "text": pct(acc), "hot": True}], scale=1.0))
+                   {"label": "Simple baseline", "v": base, "text": pct(base)},
+                   {"label": "This model", "v": acc, "text": pct(acc), "hot": True}], scale=1.0))
+    words = "Who wins the match?".split()
+    h1 = "".join(f'<span class="w" style="--d:{.15 + i * .09:.2f}">{esc(w)}</span> ' for i, w in enumerate(words))
     return (
         '<div class="jk"><section class="jk-hero"><div>'
-        '<div class="jk-eyebrow jk-in" style="--d:.1">Machine learning · FRC 2026 REBUILT</div>'
-        '<h1 class="jk-in" style="--d:.2">Who wins the match?<span class="hd"></span><span class="l2">An ML model that calls FRC winners before they play.</span></h1>'
-        f'<p class="intro jk-in" style="--d:.4">Trained on {meta["official_matches"]:,} official 2026 matches. It only sees what was known about each team '
-        'before the match, and it is tested on matches it never saw while learning. Enter any six teams below.</p>'
-        '<div class="jk-chips jk-in" style="--d:.55"><span class="chip jk-chip">XGBoost</span><span class="jk-chip">Time-ordered features</span>'
-        '<span class="jk-chip">Leakage-tested</span><span class="jk-chip">Calibrated probabilities</span></div></div>'
-        '<div class="jk-ringcard jk-glass jk-in" style="--d:.3"><div class="jk-ringwrap">' + ring +
+        '<div class="jk-eyebrow jk-in" style="--d:.05">FRC 2026 · REBUILT</div>'
+        f'<h1>{h1}<span class="hd"></span></h1>'
+        '<p class="intro jk-in" style="--d:.55">Pick six teams. See who wins.</p>'
+        f'<p class="jk-meta jk-in" style="--d:.7"><span><b>{meta["official_matches"]:,}</b> official matches</span>'
+        f'<i></i><span><b>{meta["n_teams"]:,}</b> teams</span><i></i><span>tested on <b>{n_test:,}</b> unseen</span></p></div>'
+        '<div class="jk-ringcard jk-glass jk-in" style="--d:.3"><div class="jk-ringwrap"><div class="jk-halo"></div>' + ring +
         f'<div class="jk-ringtxt"><div class="jk-big">{count(int(whole))}<small>.{dec}%</small></div><div class="jk-ringlbl">winner accuracy</div></div></div>'
-        f'<p class="jk-ringcap"><b>{round(acc * n_test):,} of {n_test:,}</b> held-out official matches called correctly. A coin flip gets 50%.</p>'
         + bars + '</div></section></div>')
 
 
@@ -70,23 +70,15 @@ def kpis(stats, meta):
     m = stats["models"]["xgboost"]["test"]
     conf = stats["confidence"][-1]
     cards = [
-        ("Unseen-event accuracy", f'{stats["event_holdout"]["accuracy"] * 100:.1f}<em>%</em>', "Events held out entirely from training."),
+        ("Unseen-event accuracy", f'{stats["event_holdout"]["accuracy"] * 100:.1f}<em>%</em>', "On events it never trained on."),
         (f'Right when {int(conf["lo"] * 100)}%+ sure', f'{conf["acc"] * 100:.1f}<em>%</em>',
-         f'On {conf["n"]:,} matches ({conf["share"] * 100:.0f}% of all) where the model was very confident.'),
-        ("ROC-AUC", f'{m["roc_auc"]:.3f}', "How well it ranks winners above losers (0.5 = chance)."),
-        ("Matches tested", f'{stats["n_test_matches"]:,}', f'Plus {stats["n_train_matches"]:,} to learn from, {meta["n_teams"]:,} teams rated.'),
+         f'{conf["n"]:,} matches, {conf["share"] * 100:.0f}% of all.'),
+        ("ROC-AUC", f'{m["roc_auc"]:.3f}', "0.5 is chance, 1.0 is perfect."),
+        ("Matches tested", f'{stats["n_test_matches"]:,}', f'Held out from training.'),
     ]
     return '<div class="jk"><div class="jk-grid4" style="margin-top:6px">' + "".join(
         f'<div class="jk-kpi jk-glass jk-hover" style="--i:{i}"><div class="jk-kv">{v}</div><div class="jk-kl">{esc(l)}</div><div class="jk-ks">{esc(s)}</div></div>'
         for i, (l, v, s) in enumerate(cards)) + '</div></div>'
-
-
-def marquee():
-    a = ["Win probability", "Time-ordered features", "XGBoost", "Calibrated", "Leakage-tested", "Official events only", "REBUILT 2026", "Held-out testing"]
-    b = ["Auto points", "Teleop points", "Tower levels", "Rolling form", "Alliance strength", "Shrinkage for small samples", "SHAP explanations", "Chronological split", "Reproducible"]
-    row = lambda items: "".join(f"<span>{esc(x)}</span>" for x in items * 2)
-    return ('<div class="jk"><div class="jk-mq" aria-hidden="true"><div class="jk-mqr"><div class="jk-mqt" style="--dur:80s">' + row(a) +
-            '</div></div><div class="jk-mqr r"><div class="jk-mqt" style="--dur:90s">' + row(b) + '</div></div></div></div>')
 
 
 def section(eyebrow, title, text=""):

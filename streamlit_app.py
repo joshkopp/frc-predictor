@@ -63,7 +63,6 @@ def predict(red, blue, playoff, pool):
 st.html(ui.nav(meta["data_through"]))
 st.html(ui.hero(stats, meta))
 st.html(ui.kpis(stats, meta))
-st.html(ui.marquee())
 
 # ===================================================================== predictor
 st.html(ui.section("Try it", "Predict a match",
@@ -157,56 +156,6 @@ st.html(ui.grid("2", ui.card(ui.calib_svg(stats["calibration"]), "Calibration",
                              "Each dot is 10% of test matches, grouped by predicted win probability. Closer to the diagonal is better."),
                 ui.card(conf_html, "Accuracy by confidence", "How often it was right, depending on how sure it was. More confident should mean more accurate.")))
 
-# ===================================================================== strengths / weaknesses
-st.html(ui.section("Detail", "Where it's strong and where it struggles",
-                   "Honest breakdowns on held-out matches. Small groups are noisy, so check the match counts."))
-exp = ui.hbars([{"label": f"{e['label']} prior matches", "v": e["acc"], "text": ui.pct(e["acc"], 0)} for e in stats["by_experience"]])
-exp += '<div class="jk"><p class="jk-muted" style="font-size:13px;margin-top:10px">Matches in each group: ' + " · ".join(f"{e['n']:,}" for e in stats["by_experience"]) + '</p></div>'
-lvl = ui.hbars([{"label": e["label"], "v": e["acc"], "text": ui.pct(e["acc"], 0)} for e in stats["by_level"]])
-lvl += '<div class="jk"><p class="jk-muted" style="font-size:13px;margin-top:10px">Matches: ' + " · ".join(f"{e['n']:,}" for e in stats["by_level"]) + '</p></div>'
-st.html(ui.grid("2", ui.card(exp, "By team experience", "Accuracy by how few matches the least-experienced robot had played."),
-                ui.card(lvl, "Qualification vs playoff", "Playoffs are tighter: stronger teams face each other.")))
-wk = stats["by_week"]
-st.html(ui.grid("2", ui.card(ui.vbars([{"label": w["label"], "v": w["acc"]} for w in wk], vmax=1.0, fmt=lambda v: f"{v * 100:.0f}%"),
-                             "Accuracy by week", "Validation and test periods only. Weeks with under 30 matches are hidden."),
-                ui.card(ui.vbars([{"label": f"Fold {i + 1}", "v": c["accuracy"]} for i, c in enumerate(stats["temporal_cv"])], vmax=1.0,
-                                 fmt=lambda v: f"{v * 100:.0f}%")
-                        + f'<div class="jk"><p class="jk-muted" style="font-size:13px;margin-top:12px">Each fold trains on earlier matches and tests on the next block. '
-                          f'On events held out entirely: <b style="color:#f4f6f4">{stats["event_holdout"]["accuracy"] * 100:.1f}%</b>.</p></div>',
-                        "Stability over time", "Expanding-window cross-validation: always train on the past, test on the future.")))
-
-# ===================================================================== drivers
-st.html(ui.section("Inside the model", "What does it look at?",
-                   "SHAP scores show how much each input moved the model's predictions on average. It shows what the model uses, not what causes wins."))
-mx = max(x["value"] for x in stats["shap"])
-shap_html = ui.hbars([{"label": ui.label(x["feature"]), "v": x["value"], "text": f'{x["value"]:.2f}', "hot": i == 0} for i, x in enumerate(stats["shap"])], scale=mx)
-how = ("<div class='jk'><ul class='jk-list'>"
-       "<li><b>Rating gap</b>: each robot gets an estimated scoring contribution, updated after every match (with small-sample shrinkage).</li>"
-       "<li><b>Auto, teleop, tower</b>: separate estimates for each scoring phase from the 2026 score breakdown.</li>"
-       "<li><b>Recent form</b>: how an alliance's teams scored lately.</li>"
-       "<li><b>Strict time order</b>: features for a match use only earlier matches. Tests scramble the future to prove it.</li></ul></div>")
-st.html(ui.grid("2", ui.card(shap_html, "Top features", "Average impact on the win prediction (log-odds)."),
-                ui.card(how, "How the features are built", "Everything is computed in chronological order.")))
-
-# ===================================================================== data
-dq = stats["data_quality"]
-st.html(ui.section("The data", "What it was trained on",
-                   "Match results from The Blue Alliance. Every record is validated, and nothing is silently dropped."))
-funnel = ui.hbars([{"label": "Collected from TBA", "v": dq["collected"], "text": f"{dq['collected']:,}", "dim": True},
-                   {"label": "Passed validation", "v": dq["valid"], "text": f"{dq['valid']:,}", "dim": True},
-                   {"label": "Official events (model)", "v": dq["official_used"], "text": f"{dq['official_used']:,}", "hot": True}], scale=dq["collected"])
-reasons = ui.stat_rows([(k.replace("_", " "), f"{v:,}") for k, v in sorted(dq["reasons"].items(), key=lambda kv: -kv[1])])
-facts = ui.stat_rows([("Events with valid matches (all types)", f"{dq['events']:,}"), ("Teams rated", f"{meta['n_teams']:,}"),
-                      ("Offseason/preseason excluded", f"{dq['offseason_excluded']:,}"), ("Mean alliance score", f"{stats['mean_score']:.0f}"),
-                      ("Median alliance score", f"{stats['median_score']:.0f}"), ("Highest alliance score", f"{stats['max_score']:.0f}")])
-st.html(ui.grid("3", ui.card(funnel, "Pipeline", "From raw records to training data."),
-                ui.card(f'<div class="jk">{reasons}</div>', "Why records were excluded", "Logged in a file, never deleted silently."),
-                ui.card(f'<div class="jk">{facts}</div>', "Dataset facts", "2026 REBUILT.")))
-st.html(ui.grid("2", ui.card(ui.vbars([{"label": w["label"], "v": w["n"]} for w in stats["matches_per_week"]], fmt=lambda v: f"{v:,}"),
-                             "Matches per week", "Official matches used by the model."),
-                ui.card(ui.vbars([{"label": h["label"].split("-")[0], "v": h["n"]} for h in stats["score_hist"]], fmt=lambda v: f"{v:,}"),
-                        "Alliance score distribution", "Alliance score in points (bucket start). Heavily skewed: most are low, a few elite alliances score very high.")))
-
 # ===================================================================== leaderboard
 st.html(ui.section("Teams", "Team ratings",
                    "Estimated scoring contribution per robot, in points above an average robot, from every official 2026 match. These are estimates inferred from alliance scores."))
@@ -231,18 +180,4 @@ lb_rows = [[f'<span class="rk">{i + 1}</span>', k[3:], f'{s.rating:+.0f}<span cl
 st.html(ui.wide(ui.card(ui.table(["#", "Team", "Est. points vs avg", "Matches", "Win rate", "Hub auto", "Hub teleop"], lb_rows),
                         "Top 25 teams", "Minimum 15 matches played.")))
 
-# ===================================================================== limits
-st.html(ui.section("Read this", "How it works and where it falls short"))
-works = ("<div class='jk'><ul class='jk-list'>"
-         "<li>Official 2026 events only (regionals, districts, championships). Offseason and preseason events are kept out.</li>"
-         "<li>Matches are processed in time order, and the data is split by time into train, validation and test.</li>"
-         "<li>XGBoost, LightGBM and logistic regression are compared. The winner is picked on validation data only.</li>"
-         "<li>Automated tests fail the build if future information leaks into a match's features.</li></ul></div>")
-limits = ("<div class='jk'><ul class='jk-list'>"
-          "<li>Only alliance-level scores exist, so each robot's contribution is an <b>estimate</b>.</li>"
-          "<li>Ratings are end-of-data snapshots, so this is for what-if matchups, not for re-predicting past matches.</li>"
-          "<li>Early in a team's season the model knows little about it.</li>"
-          "<li>Score-gap numbers carry roughly ±75 points of error and are weakest for elite alliances. Trust the win probability more.</li>"
-          "<li>It cannot see breakdowns, strategy, or drive-team changes.</li></ul></div>")
-st.html(ui.grid("2", ui.card(works, "How it works"), ui.card(limits, "Limits")))
 st.html(ui.footer())
